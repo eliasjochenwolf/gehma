@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gehma – Events in Nürnberg</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap');
+
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-hint: #aaa;
+    --purple: #534AB7;
+    --purple-light: #EEEDFE;
+    --purple-text: #3C3489;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1rem 2rem; }
+  .app { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 1rem; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--text); letter-spacing: -0.02em; }
+  .logo em { color: var(--purple); font-style: normal; }
+  .logo-city { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+
+  .tab-bar { display: flex; gap: 2px; background: var(--border); border-radius: 10px; padding: 3px; }
+  .tab { padding: 5px 12px; border: none; background: transparent; border-radius: 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all .15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .badge { background: var(--purple); color: #fff; border-radius: 20px; font-size: 10px; padding: 1px 6px; display: none; }
+
+  .filter-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-hint); margin-bottom: 6px; font-weight: 500; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 5px 13px; border-radius: 20px; border: 1px solid var(--border-strong); font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; background: var(--surface); color: var(--text-muted); transition: all .15s; }
+  .chip:hover { border-color: var(--purple); color: var(--purple); }
+  .chip.active { font-weight: 500; }
+  .chip-musik.active  { background:#EEEDFE; color:#3C3489; border-color:#AFA9EC; }
+  .chip-sport.active  { background:#EAF3DE; color:#27500A; border-color:#97C459; }
+  .chip-kunst.active  { background:#FBEAF0; color:#72243E; border-color:#ED93B1; }
+  .chip-kino.active   { background:#E1F5EE; color:#085041; border-color:#5DCAA5; }
+  .chip-social.active { background:#FAEEDA; color:#633806; border-color:#EF9F27; }
+  .chip-city.active { background:var(--purple-light); color:var(--purple-text); border-color:#AFA9EC; font-weight:500; }
+
+  .card-stack { position: relative; width: 100%; height: 480px; }
+  .event-card { position: absolute; width: 100%; height: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; cursor: grab; user-select: none; box-shadow: 0 2px 16px rgba(0,0,0,0.06); }
+  .event-card.behind { transform: scale(0.95) translateY(12px); z-index: 0; }
+  .event-card.front { z-index: 1; }
+  .event-card.snap { transition: transform .2s ease; }
+  .event-card.fly-right { transition: transform .35s ease, opacity .35s ease; transform: translateX(130%) rotate(22deg) !important; opacity: 0; z-index: 2; }
+  .event-card.fly-left  { transition: transform .35s ease, opacity .35s ease; transform: translateX(-130%) rotate(-22deg) !important; opacity: 0; z-index: 2; }
+
+  .card-cover { width: 100%; height: 210px; display: flex; align-items: center; justify-content: center; font-size: 64px; background-size: cover; background-position: center; position: relative; }
+  .card-cover.has-img::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.25)); }
+  .card-body { padding: 1.1rem 1.3rem; }
+  .cat-pill { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; margin-bottom: 9px; }
+  .card-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; line-height: 1.25; letter-spacing: -0.02em; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card-meta { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .meta-row { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-muted); }
+  .meta-row i { font-size: 15px; flex-shrink: 0; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); }
+  .price { font-size: 15px; font-weight: 600; color: var(--text); }
+  .card-link { font-size: 12px; color: var(--purple); text-decoration: none; display: flex; align-items: center; gap: 3px; }
+  .card-link:hover { text-decoration: underline; }
+
+  .stamp { position: absolute; top: 22px; font-size: 22px; font-weight: 700; padding: 6px 16px; border-radius: 8px; border: 4px solid; opacity: 0; pointer-events: none; z-index: 10; font-family: 'DM Sans', sans-serif; letter-spacing: .04em; }
+  .stamp-like { left: 16px; color: #0F6E56; border-color: #0F6E56; transform: rotate(-14deg); }
+  .stamp-skip { right: 16px; color: #993C1D; border-color: #993C1D; transform: rotate(14deg); }
+
+  .actions { display: flex; gap: 16px; justify-content: center; align-items: center; padding: .25rem 0; }
+  .btn-act { border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform .1s, background .1s; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .btn-act:hover { background: var(--bg); transform: scale(1.06); }
+  .btn-act:active { transform: scale(0.96); }
+  .btn-skip { width: 54px; height: 54px; font-size: 22px; border-color: #F0997B; }
+  .btn-like { width: 68px; height: 68px; font-size: 26px; border-color: #5DCAA5; }
+
+  .loading-box, .no-match, .done-box { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; gap: 8px; padding: 2rem; background: var(--bg); border-radius: 20px; }
+  .big-emoji { font-size: 48px; }
+  .loading-box p, .no-match p, .done-box p { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn-reset { margin-top: 12px; padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border-strong); background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; color: var(--text); }
+  .btn-reset:hover { background: var(--purple-light); color: var(--purple-text); border-color: #AFA9EC; }
+
+  .liked-section { display: none; flex-direction: column; gap: 10px; }
+  .liked-section.vis { display: flex; }
+  .liked-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .liked-emoji { font-size: 28px; width: 42px; height:42px; text-align: center; flex-shrink: 0; background-size:cover; background-position:center; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+  .liked-info { flex: 1; min-width: 0; }
+  .liked-title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .liked-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .liked-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; margin-left: 8px; }
+  .liked-price { font-size: 13px; font-weight: 500; color: var(--text); }
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+  .empty-emoji { font-size: 42px; margin-bottom: 8px; }
+
+  .add-event-btn { width: 100%; margin-top: 4px; padding: 11px; border: 1px dashed var(--border-strong); background: var(--surface); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all .15s; }
+  .add-event-btn:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-light); }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.vis { display: flex; }
+  .modal { background: var(--surface); border-radius: 18px; padding: 1.5rem; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .modal-head h2 { font-size: 19px; font-weight: 600; }
+  .modal-close { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text-muted); padding: 4px; }
+  .modal-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 1rem; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; }
+  .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--surface); }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--purple); }
+  .btn-submit { width: 100%; margin-top: 6px; padding: 12px; background: var(--purple); color: #fff; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; }
+  .btn-submit:hover { background: #463E9E; }
+  .btn-submit:disabled { opacity: 0.6; cursor: default; }
+  .form-msg { margin-top: 10px; font-size: 13px; text-align: center; }
+  .form-msg.ok { color: #1D9E75; }
+  .form-msg.err { color: #D85A30; }
+
+  .date-row { display: flex; align-items: center; gap: 6px; }
+  .date-row input[type=date] { flex: 1; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 12px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); }
+  .date-row input[type=date]:focus { outline: none; border-color: var(--purple); }
+  .date-sep { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+  .date-clear { background: none; border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 8px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; }
+  .date-clear:hover { border-color: #D85A30; color: #D85A30; }
+
+  .free-badge { display: inline-block; background: #E1F5EE; color: #085041; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+  .attend-wrap { margin: 10px 0 0; }
+  .attend-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .attend-bar { height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
+  .attend-fill { height: 100%; background: linear-gradient(90deg, #5DCAA5, #1D9E75); border-radius: 6px; transition: width .3s; }
+  .attend-fill.almost { background: linear-gradient(90deg, #F0997B, #D85A30); }
+  .attend-fill.full { background: #D85A30; }
+  .pax { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+  .form-row { display: flex; gap: 8px; }
+  .form-row .form-group { flex: 1; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { margin: 0; font-size: 13px; color: var(--text); font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">Geh<em>ma</em><span class="logo-city">Bayern</span></div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="showTab('discover')"><i class="ti ti-cards"></i> Entdecken</button>
+      <button class="tab" onclick="showTab('liked')" id="liked-tab"><i class="ti ti-heart"></i> Gespeichert<span class="badge" id="badge">0</span></button>
+    </div>
+  </div>
+
+  <div id="discover-wrap">
+    <div class="filter-bar" style="margin-bottom:0.85rem">
+      <div class="filter-label">Stadt</div>
+      <div class="chips" id="city-chips"></div>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-label">Kategorien</div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-label">Zeitraum</div>
+      <div class="date-row">
+        <input type="date" id="date-from" onchange="onDateChange()">
+        <span class="date-sep">bis</span>
+        <input type="date" id="date-to" onchange="onDateChange()">
+        <button class="date-clear" id="date-clear" onclick="clearDates()" title="Zurücksetzen" style="display:none"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+    <div class="card-stack" id="stack"></div>
+    <div class="actions" id="actions" style="display:none">
+      <button class="btn-act btn-skip" onclick="swipe('skip')" aria-label="Überspringen"><i class="ti ti-x" style="color:#D85A30"></i></button>
+      <button class="btn-act btn-like" onclick="swipe('like')" aria-label="Liken"><i class="ti ti-heart" style="color:#1D9E75"></i></button>
+    </div>
+    <button class="add-event-btn" onclick="openAddModal()"><i class="ti ti-plus"></i> Eigenes Event hinzufügen</button>
+  </div>
+
+  <div class="liked-section" id="liked-section">
+    <div id="liked-list"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Event hinzufügen</h2>
+      <button class="modal-close" onclick="closeAddModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-hint">Dein Event wird nach kurzer Prüfung freigeschaltet.</div>
+    <div class="form-group">
+      <label>Titel *</label>
+      <input type="text" id="f-title" placeholder="z.B. WG-Party in Gostenhof" maxlength="120">
+    </div>
+    <div class="form-group">
+      <label>Kategorie *</label>
+      <select id="f-cat">
+        <option value="social">🎉 Sonstiges / Party</option>
+        <option value="musik">🎸 Musik</option>
+        <option value="sport">🏃 Sport</option>
+        <option value="kunst">🎨 Kunst & Theater</option>
+        <option value="kino">🎬 Film</option>
+        <option value="tech">💻 Tech</option>
+        <option value="food">🍕 Food</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Datum *</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label>Uhrzeit</label>
+        <input type="time" id="f-time" value="20:00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Stadt *</label>
+      <select id="f-city">
+        <option value="Nürnberg">Nürnberg</option>
+        <option value="München">München</option>
+        <option value="Regensburg">Regensburg</option>
+        <option value="Andere">Andere</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Ort / Location</label>
+      <input type="text" id="f-loc" placeholder="z.B. Club Stereo" maxlength="120">
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="f-free" onchange="togglePriceFields()">
+      <label for="f-free">Kostenloses Event</label>
+    </div>
+    <div class="form-row" id="price-fields">
+      <div class="form-group">
+        <label>Preis von (€)</label>
+        <input type="number" id="f-price-min" placeholder="z.B. 5" min="0" max="9999">
+      </div>
+      <div class="form-group">
+        <label>bis (€)</label>
+        <input type="number" id="f-price-max" placeholder="z.B. 15" min="0" max="9999">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Max. Teilnehmer (optional)</label>
+      <input type="number" id="f-max" placeholder="z.B. 80" min="1" max="100000">
+    </div>
+    <div class="form-group">
+      <label>Link (optional)</label>
+      <input type="text" id="f-url" placeholder="https://..." maxlength="300">
+    </div>
+    <button class="btn-submit" id="submit-btn" onclick="submitEvent()">Event einreichen</button>
+    <div class="form-msg" id="form-msg"></div>
+  </div>
+</div>
+
+<script>
+const CATS = [
+  {id:'musik', label:'🎸 Musik', bg:'#EEEDFE', color:'#3C3489', border:'#AFA9EC'},
+  {id:'sport', label:'🏃 Sport', bg:'#EAF3DE', color:'#27500A', border:'#97C459'},
+  {id:'kunst', label:'🎨 Kunst & Theater', bg:'#FBEAF0', color:'#72243E', border:'#ED93B1'},
+  {id:'kino',  label:'🎬 Film',  bg:'#E1F5EE', color:'#085041', border:'#5DCAA5'},
+  {id:'social',label:'🎉 Sonstiges',bg:'#FAEEDA', color:'#633806', border:'#EF9F27'},
+];
+
+const CITIES = [
+  {id:'alle', label:'📍 Alle'},
+  {id:'nuernberg', label:'Nürnberg'},
+  {id:'muenchen', label:'München'},
+  {id:'regensburg', label:'Regensburg'},
+];
+let activeCity = 'alle';
+let activeFilter = null;
+let dateFrom = '';
+let dateTo = '';
+let queue = [];
+let queueIdx = 0;
+let liked = [];
+
+function catById(id){ return CATS.find(c => c.id === id) || CATS[4]; }
+
+function buildChips(){
+  const cont = document.getElementById('chips');
+  CATS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = `chip chip-${c.id}`;
+    btn.id = `chip-${c.id}`;
+    btn.textContent = c.label;
+    btn.onclick = () => toggleFilter(c.id, btn);
+    cont.appendChild(btn);
+  });
+}
+
+function buildCityChips(){
+  const cont = document.getElementById('city-chips');
+  CITIES.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = `chip chip-city${c.id === activeCity ? ' active' : ''}`;
+    btn.id = `city-${c.id}`;
+    btn.textContent = c.label;
+    btn.onclick = () => selectCity(c.id);
+    cont.appendChild(btn);
+  });
+}
+
+function selectCity(id){
+  if(id === activeCity) return;
+  document.getElementById(`city-${activeCity}`)?.classList.remove('active');
+  activeCity = id;
+  document.getElementById(`city-${id}`)?.classList.add('active');
+  loadEvents();
+}
+
+function toggleFilter(id, btn){
+  if(activeFilter === id){ activeFilter = null; btn.classList.remove('active'); }
+  else {
+    if(activeFilter) document.getElementById(`chip-${activeFilter}`)?.classList.remove('active');
+    activeFilter = id; btn.classList.add('active');
+  }
+  loadEvents();
+}
+
+async function loadEvents(){
+  queueIdx = 0; queue = [];
+  showLoading();
+  try {
+    const qs = new URLSearchParams();
+    if(activeFilter) qs.append('category', activeFilter);
+    qs.append('city', activeCity);
+    if(dateFrom) qs.append('from', dateFrom);
+    if(dateTo) qs.append('to', dateTo);
+    const url = `/api/events?${qs}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('API Fehler');
+    queue = await res.json();
+  } catch(e) { showError(); return; }
+  renderStack();
+}
+
+function onDateChange(){
+  dateFrom = document.getElementById('date-from').value || '';
+  dateTo = document.getElementById('date-to').value || '';
+  // keep range sane: if to < from, sync
+  if(dateFrom && dateTo && dateTo < dateFrom){
+    dateTo = dateFrom;
+    document.getElementById('date-to').value = dateTo;
+  }
+  document.getElementById('date-clear').style.display = (dateFrom || dateTo) ? 'flex' : 'none';
+  loadEvents();
+}
+
+function clearDates(){
+  dateFrom = ''; dateTo = '';
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value = '';
+  document.getElementById('date-clear').style.display = 'none';
+  loadEvents();
+}
+
+function showLoading(){
+  document.getElementById('actions').style.display = 'none';
+  document.getElementById('stack').innerHTML = `<div class="loading-box"><div class="spinner"></div><p>Events laden…</p></div>`;
+}
+function showError(){
+  document.getElementById('actions').style.display = 'none';
+  document.getElementById('stack').innerHTML = `<div class="no-match"><div class="big-emoji">⚠️</div><p>Events konnten nicht geladen werden.<br>Bitte später nochmal versuchen.</p><button class="btn-reset" onclick="loadEvents()">Nochmal</button></div>`;
+}
+
+function renderStack(){
+  const stack = document.getElementById('stack');
+  const actions = document.getElementById('actions');
+  stack.innerHTML = '';
+  if(queue.length === 0){
+    stack.innerHTML = `<div class="no-match"><div class="big-emoji">🔍</div><p>Keine Events gefunden.<br>Anderen Filter probieren!</p></div>`;
+    actions.style.display = 'none'; return;
+  }
+  if(queueIdx >= queue.length){
+    stack.innerHTML = `<div class="done-box"><div class="big-emoji">🎉</div><p>Alle Events gesehen!<br>Filter ändern für mehr.</p><button class="btn-reset" onclick="loadEvents()">Neu laden</button></div>`;
+    actions.style.display = 'none'; return;
+  }
+  actions.style.display = 'flex';
+  for(let i = Math.min(queueIdx + 1, queue.length - 1); i >= queueIdx; i--){
+    const e = queue[i];
+    const isFront = i === queueIdx;
+    const cat = catById(e.cat);
+    const card = document.createElement('div');
+    card.className = 'event-card ' + (isFront ? 'front' : 'behind');
+    if(isFront) card.id = 'front-card';
+    const coverStyle = e.img
+      ? `background-image:url('${e.img}')`
+      : `background:${cat.bg}`;
+    const coverClass = e.img ? 'card-cover has-img' : 'card-cover';
+    const coverContent = e.img ? '' : e.emoji;
+
+    // Price display: free badge or text
+    const priceHtml = e.priceFree
+      ? `<span class="free-badge">Kostenlos</span>`
+      : `<div class="price">${e.price}</div>`;
+
+    // Attendees bar (only if maxAttendees known)
+    let attendHtml = '';
+    if(e.maxAttendees && e.maxAttendees > 0){
+      const cur = e.attendees || 0;
+      const pct = Math.min(100, Math.round((cur / e.maxAttendees) * 100));
+      const fillClass = pct >= 100 ? 'attend-fill full' : (pct >= 80 ? 'attend-fill almost' : 'attend-fill');
+      const label = pct >= 100 ? 'Ausgebucht' : `${cur} / ${e.maxAttendees} dabei`;
+      attendHtml = `
+        <div class="attend-wrap">
+          <div class="attend-row"><span><i class="ti ti-users" style="font-size:13px"></i> ${label}</span><span>${pct}%</span></div>
+          <div class="attend-bar"><div class="${fillClass}" style="width:${pct}%"></div></div>
+        </div>`;
+    } else if(e.attendees){
+      attendHtml = `<div class="attend-wrap"><div class="pax"><i class="ti ti-users" style="font-size:14px"></i> ${e.attendees} dabei</div></div>`;
+    }
+
+    card.innerHTML = `
+      <div class="stamp stamp-like" id="sl">Dabei!</div>
+      <div class="stamp stamp-skip" id="ss">Weiter</div>
+      <div class="${coverClass}" style="${coverStyle}">${coverContent}</div>
+      <div class="card-body">
+        <span class="cat-pill" style="background:${cat.bg};color:${cat.color};border:1px solid ${cat.border}">${cat.label}</span>
+        <div class="card-title">${e.title}</div>
+        <div class="card-meta">
+          <div class="meta-row"><i class="ti ti-calendar"></i>${e.date}</div>
+          <div class="meta-row"><i class="ti ti-map-pin"></i>${e.loc}</div>
+        </div>
+        ${attendHtml}
+        <div class="card-footer">
+          ${priceHtml}
+          ${e.url ? `<a class="card-link" href="${e.url}" target="_blank"><i class="ti ti-external-link"></i>Tickets</a>` : ''}
+        </div>
+      </div>`;
+    if(isFront) setupDrag(card);
+    stack.appendChild(card);
+  }
+}
+
+function setupDrag(card){
+  let sx, sy, dx = 0, dy = 0, dragging = false;
+  const start = (x, y) => { sx=x; sy=y; dragging=true; card.style.transition='none'; };
+  const move = (x, y) => {
+    if(!dragging) return;
+    dx=x-sx; dy=y-sy;
+    card.style.transform = `translateX(${dx}px) translateY(${dy*.25}px) rotate(${dx*.065}deg)`;
+    const sl=card.querySelector('#sl'), ss=card.querySelector('#ss');
+    if(sl) sl.style.opacity = Math.min(1, Math.max(0, dx/70));
+    if(ss) ss.style.opacity = Math.min(1, Math.max(0, -dx/70));
+  };
+  const end = () => {
+    if(!dragging) return; dragging=false;
+    if(dx > 80) swipe('like');
+    else if(dx < -80) swipe('skip');
+    else { card.classList.add('snap'); card.style.transform=''; setTimeout(()=>card.classList.remove('snap'),200); dx=0; dy=0;
+      const sl=card.querySelector('#sl'), ss=card.querySelector('#ss'); if(sl)sl.style.opacity=0; if(ss)ss.style.opacity=0; }
+  };
+  card.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  window.addEventListener('mouseup', end);
+  card.addEventListener('touchstart', e => { const t=e.touches[0]; start(t.clientX, t.clientY); }, {passive:true});
+  window.addEventListener('touchmove', e => { const t=e.touches[0]; move(t.clientX, t.clientY); }, {passive:true});
+  window.addEventListener('touchend', end);
+}
+
+function swipe(dir){
+  const card = document.getElementById('front-card');
+  if(!card || queueIdx >= queue.length) return;
+  if(dir === 'like'){ liked.push(queue[queueIdx]); updateBadge(); }
+  card.classList.add(dir === 'like' ? 'fly-right' : 'fly-left');
+  setTimeout(() => { queueIdx++; renderStack(); }, 360);
+}
+
+function updateBadge(){ const b = document.getElementById('badge'); b.textContent = liked.length; b.style.display = 'inline'; }
+
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='discover')||(i===1&&tab==='liked')));
+  const dw = document.getElementById('discover-wrap');
+  const ls = document.getElementById('liked-section');
+  if(tab === 'discover'){ dw.style.display='block'; ls.classList.remove('vis'); }
+  else { dw.style.display='none'; ls.classList.add('vis'); renderLiked(); }
+}
+
+function renderLiked(){
+  const list = document.getElementById('liked-list');
+  if(liked.length === 0){
+    list.innerHTML = `<div class="empty"><div class="empty-emoji">💫</div><p>Noch keine Events gespeichert.<br>Swipe nach rechts um Events zu liken!</p></div>`;
+    return;
+  }
+  list.innerHTML = liked.map(e => {
+    const cat = catById(e.cat);
+    const emojiCell = e.img
+      ? `<div class="liked-emoji" style="background-image:url('${e.img}')"></div>`
+      : `<div class="liked-emoji">${e.emoji}</div>`;
+    return `<div class="liked-card">
+      ${emojiCell}
+      <div class="liked-info">
+        <div class="liked-title">${e.title}</div>
+        <div class="liked-sub">${e.date}</div>
+        <div class="liked-sub">${e.loc.split(',')[0]}</div>
+      </div>
+      <div class="liked-right">
+        <span class="cat-pill" style="font-size:10px;padding:2px 8px;background:${cat.bg};color:${cat.color};border-radius:20px">${cat.label}</span>
+        <span class="liked-price">${e.priceFree ? 'Kostenlos' : e.price}</span>
+        ${e.url ? `<a href="${e.url}" target="_blank" style="font-size:11px;color:var(--purple)">Tickets →</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddModal(){
+  document.getElementById('add-modal').classList.add('vis');
+  document.getElementById('form-msg').textContent = '';
+}
+
+function closeAddModal(){
+  document.getElementById('add-modal').classList.remove('vis');
+}
+
+function togglePriceFields(){
+  const free = document.getElementById('f-free').checked;
+  document.getElementById('price-fields').style.display = free ? 'none' : 'flex';
+}
+
+async function submitEvent(){
+  const msg = document.getElementById('form-msg');
+  const btn = document.getElementById('submit-btn');
+  const free = document.getElementById('f-free').checked;
+
+  const payload = {
+    title: document.getElementById('f-title').value.trim(),
+    cat: document.getElementById('f-cat').value,
+    isoDate: document.getElementById('f-date').value,
+    time: document.getElementById('f-time').value || '20:00',
+    city: document.getElementById('f-city').value,
+    loc: document.getElementById('f-loc').value.trim(),
+    priceFree: free,
+    priceMin: free ? '' : document.getElementById('f-price-min').value,
+    priceMax: free ? '' : document.getElementById('f-price-max').value,
+    maxAttendees: document.getElementById('f-max').value,
+    url: document.getElementById('f-url').value.trim(),
+  };
+
+  // Validation
+  if(!payload.title || !payload.isoDate || !payload.city){
+    msg.className = 'form-msg err';
+    msg.textContent = 'Bitte Titel, Datum und Stadt ausfüllen.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Wird gesendet…';
+  try {
+    const res = await fetch('/api/submit-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Fehler');
+    msg.className = 'form-msg ok';
+    msg.textContent = data.message || 'Event eingereicht – wird nach Prüfung freigeschaltet.';
+    // Reset form
+    ['f-title','f-loc','f-price-min','f-price-max','f-max','f-url','f-date'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('f-free').checked = false;
+    togglePriceFields();
+    setTimeout(closeAddModal, 2000);
+  } catch(e){
+    msg.className = 'form-msg err';
+    msg.textContent = e.message || 'Etwas ist schiefgelaufen.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Event einreichen';
+  }
+}
+
+buildCityChips();
+buildChips();
+loadEvents();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "gehma",
+  "version": "1.0.0",
+  "description": "Gehma – Event-Discovery-App für Bayern",
+  "private": true,
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

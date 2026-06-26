@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gehma – Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #f7f6f2; padding: 1.5rem; max-width: 640px; margin: 0 auto; color: #1a1a1a; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 1.5rem; }
+  .login { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  input { flex: 1; padding: 10px 12px; border: 1px solid rgba(0,0,0,0.18); border-radius: 10px; font-size: 14px; font-family: inherit; }
+  button { padding: 10px 16px; border: none; border-radius: 10px; font-size: 14px; font-family: inherit; cursor: pointer; font-weight: 500; }
+  .btn-primary { background: #534AB7; color: #fff; }
+  .btn-approve { background: #1D9E75; color: #fff; }
+  .btn-reject { background: #D85A30; color: #fff; }
+  .card { background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .card h3 { font-size: 16px; margin-bottom: 6px; }
+  .card .meta { font-size: 13px; color: #6b6b6b; margin-bottom: 3px; }
+  .card .actions { display: flex; gap: 8px; margin-top: 12px; }
+  .empty { text-align: center; color: #6b6b6b; padding: 2rem; }
+  .badge { display: inline-block; background: #EEEDFE; color: #3C3489; font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; }
+  .count { font-size: 13px; color: #6b6b6b; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+  <h1>Gehma Admin</h1>
+  <div class="sub">Eingereichte Events prüfen und freischalten</div>
+
+  <div class="login" id="login">
+    <input type="password" id="adminkey" placeholder="Admin-Passwort">
+    <button class="btn-primary" onclick="login()">Anmelden</button>
+  </div>
+
+  <div id="content" style="display:none">
+    <div class="count" id="count"></div>
+    <div id="list"></div>
+  </div>
+
+<script>
+let KEY = "";
+
+async function login(){
+  KEY = document.getElementById('adminkey').value.trim();
+  if(!KEY) return;
+  await loadPending();
+}
+
+async function loadPending(){
+  try {
+    const res = await fetch(`/api/admin?action=list&key=${encodeURIComponent(KEY)}`);
+    if(res.status === 401){ alert("Falsches Passwort"); return; }
+    const data = await res.json();
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('count').textContent =
+      `${data.pending.length} ausstehend · ${data.approvedCount} freigeschaltet`;
+    renderList(data.pending);
+  } catch(e){ alert("Fehler beim Laden"); }
+}
+
+function renderList(pending){
+  const list = document.getElementById('list');
+  if(pending.length === 0){
+    list.innerHTML = '<div class="empty">Keine ausstehenden Events 🎉</div>';
+    return;
+  }
+  list.innerHTML = pending.map(e => `
+    <div class="card">
+      <span class="badge">${e.emoji} ${e.cat}</span>
+      <h3>${escapeHtml(e.title)}</h3>
+      <div class="meta">📅 ${escapeHtml(e.date)}</div>
+      <div class="meta">📍 ${escapeHtml(e.loc)} (${escapeHtml(e.city)})</div>
+      <div class="meta">💶 ${escapeHtml(e.price)}</div>
+      ${e.url ? `<div class="meta">🔗 <a href="${escapeHtml(e.url)}" target="_blank">Link</a></div>` : ''}
+      <div class="actions">
+        <button class="btn-approve" onclick="act('approve','${e.id}')">✓ Freischalten</button>
+        <button class="btn-reject" onclick="act('reject','${e.id}')">✕ Ablehnen</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function act(action, id){
+  try {
+    await fetch(`/api/admin?action=${action}&id=${encodeURIComponent(id)}&key=${encodeURIComponent(KEY)}`);
+    await loadPending();
+  } catch(e){ alert("Fehler"); }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
