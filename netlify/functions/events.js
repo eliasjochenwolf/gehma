@@ -1,10 +1,6 @@
-const { getStore } = require("@netlify/blobs");
-
 exports.handler = async function (event) {
   const category = event.queryStringParameters?.category || "";
   const cityParam = event.queryStringParameters?.city || "alle";
-  const dateFrom = event.queryStringParameters?.from || "";
-  const dateTo = event.queryStringParameters?.to || "";
 
   const segmentMap = {
     musik: "Music", sport: "Sports", kunst: "Arts & Theatre",
@@ -18,26 +14,36 @@ exports.handler = async function (event) {
     "Music": "musik", "Sports": "sport", "Arts & Theatre": "kunst",
     "Film": "kino", "Miscellaneous": "social", "Family": "social",
   };
-  const CITIES = { nuernberg: "Nürnberg", muenchen: "München", regensburg: "Regensburg" };
+
+  // Cities with geo-coordinates (Ticketmaster city= search fails for DE,
+  // so we use latlong + radius which works reliably)
+  const CITIES = {
+    nuernberg:  { name: "Nürnberg",   lat: 49.4521, lon: 11.0767 },
+    muenchen:   { name: "München",    lat: 48.1351, lon: 11.5820 },
+    regensburg: { name: "Regensburg", lat: 49.0134, lon: 12.1016 },
+  };
 
   const key = process.env.TICKETMASTER_KEY;
 
-  let cities;
-  if (cityParam === "alle") cities = Object.values(CITIES);
-  else if (CITIES[cityParam]) cities = [CITIES[cityParam]];
-  else cities = Object.values(CITIES);
+  let cityKeys;
+  if (cityParam === "alle") cityKeys = Object.keys(CITIES);
+  else if (CITIES[cityParam]) cityKeys = [cityParam];
+  else cityKeys = Object.keys(CITIES);
 
   const segment = segmentMap[category];
 
   function buildUrl(city) {
     const params = new URLSearchParams({
-      apikey: key, city, countryCode: "DE", radius: "25", unit: "km",
-      locale: "*", size: "30", sort: "date,asc",
+      apikey: key,
+      latlong: `${city.lat},${city.lon}`,
+      radius: "30",
+      unit: "km",
+      locale: "*",
+      size: "30",
+      sort: "date,asc",
+      countryCode: "DE",
     });
     if (segment) params.append("segmentName", segment);
-    // Ticketmaster supports date filtering too
-    if (dateFrom) params.append("startDateTime", dateFrom + "T00:00:00Z");
-    if (dateTo) params.append("endDateTime", dateTo + "T23:59:59Z");
     return `https://app.ticketmaster.com/discovery/v2/events.json?${params}`;
   }
 
@@ -45,71 +51,57 @@ exports.handler = async function (event) {
     const venue = e._embedded?.venues?.[0];
     const seg = e.classifications?.[0]?.segment?.name || "Miscellaneous";
     const start = e.dates?.start;
-
-    // Price range
-    let price = "Ticket", priceFree = false;
+    let price = "Ticket";
     if (e.priceRanges?.[0]) {
       const p = e.priceRanges[0];
-      const cur = p.currency === "EUR" ? "€" : p.currency;
-      const min = Math.round(p.min), max = Math.round(p.max);
-      if (min === 0 && max === 0) { price = "Kostenlos"; priceFree = true; }
-      else if (min === max) price = `${min} ${cur}`;
-      else price = `${min}–${max} ${cur}`;
+      const min = Math.round(p.min);
+      const max = Math.round(p.max);
+      if (min === 0 && max === 0) price = "Gratis";
+      else if (min === max) price = `${min} €`;
+      else price = `${min}–${max} €`;
     }
-
-    // ISO date + display date
-    let dateStr = "Datum offen", isoDate = "";
+    let dateStr = "Datum offen";
+    let isoDate = start?.localDate || "";
     if (start?.localDate) {
-      isoDate = start.localDate;
       const d = new Date(start.localDate + "T" + (start.localTime || "20:00") + ":00");
       dateStr = d.toLocaleString("de-DE", {
         weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
       });
     }
-
     return {
       id: e.id, emoji: emojiBySegment[seg] || "🎉", title: e.name,
       cat: catBySegment[seg] || "social", date: dateStr, isoDate,
       city: venue?.city?.name || "",
       loc: venue ? venue.name + ", " + (venue.city?.name || "") : "",
-      price, priceFree,
+      price,
+      priceFree: price === "Gratis",
       attendees: null, maxAttendees: null,
       url: e.url, source: "ticketmaster",
       img: e.images?.find((i) => i.ratio === "16_9" && i.width > 500)?.url || e.images?.[0]?.url || null,
     };
   }
 
-  function cityMatches(ev) {
-    if (cityParam === "alle") return true;
-    const target = CITIES[cityParam];
-    return ev.city && target && ev.city.toLowerCase().includes(target.toLowerCase());
-  }
   function catMatches(ev) {
     if (!category) return true;
     return ev.cat === category;
   }
-  function dateMatches(ev) {
-    if (!ev.isoDate) return true; // keep events without a date
-    if (dateFrom && ev.isoDate < dateFrom) return false;
-    if (dateTo && ev.isoDate > dateTo) return false;
-    return true;
-  }
 
   let events = [];
+  let tmError = null;
 
-  // 1. Ticketmaster
+  // 1. Ticketmaster via geo-search
   if (key) {
     try {
       const results = await Promise.all(
-        cities.map(async (city) => {
-          const res = await fetch(buildUrl(city));
-          if (!res.ok) return [];
+        cityKeys.map(async (ck) => {
+          const res = await fetch(buildUrl(CITIES[ck]));
+          if (!res.ok) { tmError = `TM ${res.status}`; return []; }
           const data = await res.json();
           return (data?._embedded?.events || []).map(mapEvent);
         })
       );
       for (const list of results) events.push(...list);
-    } catch (err) { /* ignore */ }
+    } catch (err) { tmError = err.message; }
   }
 
   // 2. Curated local events
@@ -119,24 +111,11 @@ exports.handler = async function (event) {
     if (res.ok) {
       const data = await res.json();
       const local = (data.events || [])
-        .map((e) => ({ ...e, source: "local", img: e.img || null,
-          attendees: e.attendees ?? null, maxAttendees: e.maxAttendees ?? null,
-          priceFree: e.priceFree ?? false, isoDate: e.isoDate || "" }))
-        .filter(cityMatches).filter(catMatches).filter(dateMatches);
+        .map((e) => ({ ...e, source: "local", img: e.img || null }))
+        .filter((e) => cityParam === "alle" || (e.city && CITIES[cityParam] && e.city.toLowerCase().includes(CITIES[cityParam].name.toLowerCase())))
+        .filter(catMatches);
       events.push(...local);
     }
-  } catch (err) { /* ignore */ }
-
-  // 3. Approved community events
-  try {
-    const store = getStore("events");
-    const approved = (await store.get("approved", { type: "json" })) || [];
-    const userEvents = approved
-      .map((e) => ({ ...e, source: "community", img: e.img || null,
-        attendees: e.attendees ?? null, maxAttendees: e.maxAttendees ?? null,
-        priceFree: e.priceFree ?? false, isoDate: e.isoDate || "" }))
-      .filter(cityMatches).filter(catMatches).filter(dateMatches);
-    events.push(...userEvents);
   } catch (err) { /* ignore */ }
 
   // Dedupe + shuffle

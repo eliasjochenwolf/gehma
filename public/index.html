@@ -551,15 +551,34 @@ async function submitEvent(){
   btn.disabled = true;
   btn.textContent = 'Wird gesendet…';
   try {
-    const res = await fetch('/api/submit-event', {
+    // Build readable price text
+    let priceText;
+    if (payload.priceFree) priceText = 'Kostenlos';
+    else if (payload.priceMin && payload.priceMax) priceText = `${payload.priceMin}–${payload.priceMax} €`;
+    else if (payload.priceMin) priceText = `ab ${payload.priceMin} €`;
+    else priceText = 'k.A.';
+
+    // Send to Formsubmit.co (lands in your email inbox)
+    const res = await fetch('https://formsubmit.co/ajax/gehmaapp@gmail.com', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: `Neues Gehma-Event: ${payload.title}`,
+        Titel: payload.title,
+        Kategorie: payload.cat,
+        Datum: payload.isoDate,
+        Uhrzeit: payload.time,
+        Stadt: payload.city,
+        Ort: payload.loc || '–',
+        Preis: priceText,
+        'Max. Teilnehmer': payload.maxAttendees || '–',
+        Link: payload.url || '–',
+      }),
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Fehler');
+    if(!res.ok && !data.success) throw new Error('Fehler beim Senden');
     msg.className = 'form-msg ok';
-    msg.textContent = data.message || 'Event eingereicht – wird nach Prüfung freigeschaltet.';
+    msg.textContent = 'Event eingereicht – wird nach Prüfung freigeschaltet.';
     // Reset form
     ['f-title','f-loc','f-price-min','f-price-max','f-max','f-url','f-date'].forEach(id => {
       document.getElementById(id).value = '';
