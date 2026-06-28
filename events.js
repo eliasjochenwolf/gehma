@@ -1,6 +1,7 @@
-const { getStore } = require("@netlify/blobs");
+const { getStore, connectLambda } = require("@netlify/blobs");
 
 exports.handler = async function (event) {
+  connectLambda(event);
   const category = event.queryStringParameters?.category || "";
   const cityParam = event.queryStringParameters?.city || "alle";
 
@@ -122,7 +123,7 @@ exports.handler = async function (event) {
 
   // 3. Approved community events
   try {
-    const store = getStore("events");
+    const store = getStore({ name: "events", consistency: "strong" });
     const approved = (await store.get("approved", { type: "json" })) || [];
     const userEvents = approved
       .map((e) => ({ ...e, source: "community", img: e.img || null }))
