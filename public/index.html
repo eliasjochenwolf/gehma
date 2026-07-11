@@ -3,7 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gehma – Events in Nürnberg</title>
+<title>Gehma – Events in Bayern</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3C3489">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gehma">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap');
@@ -250,6 +263,10 @@
     <div class="form-group">
       <label>Link (optional)</label>
       <input type="text" id="f-url" placeholder="https://..." maxlength="300">
+
+      <label>Bild-Link (optional)</label>
+      <input type="text" id="f-img" placeholder="https://... (Foto/Flyer des Events)" maxlength="500">
+      <div style="font-size:12px; color:#888; margin-top:-6px; margin-bottom:8px;">Tipp: Link zu einem Bild, z.B. vom Instagram-Post oder Flyer des Events.</div>
     </div>
     <button class="btn-submit" id="submit-btn" onclick="submitEvent()">Event einreichen</button>
     <div class="form-msg" id="form-msg"></div>
@@ -539,6 +556,7 @@ async function submitEvent(){
     priceMax: free ? '' : document.getElementById('f-price-max').value,
     maxAttendees: document.getElementById('f-max').value,
     url: document.getElementById('f-url').value.trim(),
+    img: document.getElementById('f-img').value.trim(),
   };
 
   // Validation
@@ -573,6 +591,7 @@ async function submitEvent(){
         Preis: priceText,
         'Max. Teilnehmer': payload.maxAttendees || '–',
         Link: payload.url || '–',
+        'Bild-Link': payload.img || '–',
       }),
     });
     const data = await res.json();
@@ -580,7 +599,7 @@ async function submitEvent(){
     msg.className = 'form-msg ok';
     msg.textContent = 'Event eingereicht – wird nach Prüfung freigeschaltet.';
     // Reset form
-    ['f-title','f-loc','f-price-min','f-price-max','f-max','f-url','f-date'].forEach(id => {
+    ['f-title','f-loc','f-price-min','f-price-max','f-max','f-url','f-img','f-date'].forEach(id => {
       document.getElementById(id).value = '';
     });
     document.getElementById('f-free').checked = false;
@@ -598,6 +617,16 @@ async function submitEvent(){
 buildCityChips();
 buildChips();
 loadEvents();
+</script>
+<script>
+// Register PWA service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.log('SW registration failed:', err);
+    });
+  });
+}
 </script>
 </body>
 </html>
