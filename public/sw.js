@@ -1,5 +1,5 @@
 // Gehma Service Worker – basic offline caching
-const CACHE_NAME = 'gehma-v1';
+const CACHE_NAME = 'gehma-v2';
 const CORE_ASSETS = [
   '/',
   '/index.html',
