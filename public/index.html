@@ -448,7 +448,7 @@ function renderStack(){
         ${attendHtml}
         <div class="card-footer">
           ${priceHtml}
-          ${e.url ? `<a class="card-link" href="${e.url}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i>Mehr Infos</a>` : ''}
+          ${e.url ? `<a class="card-link" href="${e.url}" target="_blank"><i class="ti ti-external-link"></i>Tickets</a>` : ''}
         </div>
       </div>`;
     if(isFront) setupDrag(card);
@@ -459,7 +459,7 @@ function renderStack(){
 function setupDrag(card){
   let sx, sy, dx = 0, dy = 0, dragging = false, rafId = null, lockedDir = null;
   card.style.willChange = 'transform';
-  card.style.touchAction = 'none';
+  card.style.touchAction = 'pan-y';
 
   const applyTransform = () => {
     rafId = null;
@@ -476,11 +476,17 @@ function setupDrag(card){
   const move = (x, y) => {
     if(!dragging) return;
     dx=x-sx; dy=y-sy;
+    // Lock direction on first significant movement (horizontal swipe vs vertical scroll)
+    if(lockedDir === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)){
+      lockedDir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+    if(lockedDir === 'v') return; // let the page scroll, don't drag the card
     if(rafId === null) rafId = requestAnimationFrame(applyTransform);
   };
   const end = () => {
     if(!dragging) return; dragging=false;
     if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+    if(lockedDir === 'v'){ dx=0; dy=0; return; }
     if(dx > 80) swipe('like');
     else if(dx < -80) swipe('skip');
     else {
@@ -496,11 +502,12 @@ function setupDrag(card){
   card.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
   window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
   window.addEventListener('mouseup', end);
-  card.addEventListener('touchstart', e => { const t=e.touches[0]; start(t.clientX, t.clientY); }, {passive:false});
+  card.addEventListener('touchstart', e => { const t=e.touches[0]; start(t.clientX, t.clientY); }, {passive:true});
   card.addEventListener('touchmove', e => {
     if(!dragging) return;
-    e.preventDefault(); // stop the page from scrolling in any direction
     const t=e.touches[0];
+    // Prevent page scroll only while doing a horizontal swipe
+    if(lockedDir === 'h') e.preventDefault();
     move(t.clientX, t.clientY);
   }, {passive:false});
   window.addEventListener('touchend', end);
@@ -546,7 +553,7 @@ function renderLiked(){
       <div class="liked-right">
         <span class="cat-pill" style="font-size:10px;padding:2px 8px;background:${cat.bg};color:${cat.color};border-radius:20px">${cat.label}</span>
         <span class="liked-price">${e.priceFree ? 'Kostenlos' : e.price}</span>
-        ${e.url ? `<a href="${e.url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--purple)">Mehr Infos →</a>` : ''}
+        ${e.url ? `<a href="${e.url}" target="_blank" style="font-size:11px;color:var(--purple)">Tickets →</a>` : ''}
       </div>
     </div>`;
   }).join('');
