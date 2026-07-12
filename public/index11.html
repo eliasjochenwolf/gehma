@@ -448,7 +448,7 @@ function renderStack(){
         ${attendHtml}
         <div class="card-footer">
           ${priceHtml}
-          ${e.url ? `<a class="card-link" href="${e.url}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i>Mehr Infos</a>` : ''}
+          ${e.url ? `<a class="card-link" href="${e.url}" target="_blank"><i class="ti ti-external-link"></i>Tickets</a>` : ''}
         </div>
       </div>`;
     if(isFront) setupDrag(card);
@@ -546,7 +546,7 @@ function renderLiked(){
       <div class="liked-right">
         <span class="cat-pill" style="font-size:10px;padding:2px 8px;background:${cat.bg};color:${cat.color};border-radius:20px">${cat.label}</span>
         <span class="liked-price">${e.priceFree ? 'Kostenlos' : e.price}</span>
-        ${e.url ? `<a href="${e.url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--purple)">Mehr Infos →</a>` : ''}
+        ${e.url ? `<a href="${e.url}" target="_blank" style="font-size:11px;color:var(--purple)">Tickets →</a>` : ''}
       </div>
     </div>`;
   }).join('');
